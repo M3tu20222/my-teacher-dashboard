@@ -19,6 +19,7 @@ export async function connectToDatabase() {
     return { client: cachedClient, db: cachedDb };
   }
 
+  // TypeScript hatasını çözmek için as string kullanıyoruz
   const client = await MongoClient.connect(MONGODB_URI as string);
 
   const db = client.db(MONGODB_DB);
