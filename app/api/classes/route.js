@@ -1,3 +1,4 @@
+import Class from '@/models/class'
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import Class from '@/models/Class';
