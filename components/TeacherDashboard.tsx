@@ -28,6 +28,7 @@ interface Student {
   scores: Score[];
 }
 
+
 export default function TeacherDashboard() {
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>("All");
@@ -49,11 +50,19 @@ export default function TeacherDashboard() {
       if (!response.ok) throw new Error('Failed to fetch students');
       const data = await response.json();
       console.log('Fetched students:', data);
-      setStudents(data);
+  
+      // Her öğrenci için scores alanını kontrol ediyoruz
+      const processedData = data.map((student: Student) => ({
+        ...student,
+        scores: student.scores || [],
+      }));
+  
+      setStudents(processedData);
     } catch (error) {
       console.error('Error fetching students:', error);
     }
   };
+  
 
   const handleExportCSV = async () => {
     try {
@@ -116,10 +125,18 @@ export default function TeacherDashboard() {
   };
 
   const calculateAvgScore = (scores: Score[]): number => {
+    console.log('Scores received:', scores);
     if (!scores || scores.length === 0) return 0;
-    const sum = scores.reduce((acc, score) => acc + score.value, 0);
-    return Math.round(sum / scores.length);
+    const validScores = scores.filter((score) => score && score.value !== undefined);
+    if (validScores.length === 0) return 0;
+    const sum = validScores.reduce((acc, score) => {
+      console.log('Adding score value:', score.value);
+      return acc + score.value;
+    }, 0);
+    return Math.round(sum / validScores.length);
   };
+  
+  
 
   const getAvailableScoreCount = (scores: Score[]): number => {
     if (scores.length === 0) return 4;
@@ -154,11 +171,11 @@ export default function TeacherDashboard() {
         const response = await fetch('/api/students', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newStudent),
+          body: JSON.stringify({ ...newStudent, scores: [] }), // scores dizisini ekledik
         });
-
+  
         if (!response.ok) throw new Error('Failed to add student');
-
+  
         await fetchStudents();
         setNewStudent({ number: '', name: '', class: '' });
         setIsAddStudentDialogOpen(false);
@@ -167,6 +184,7 @@ export default function TeacherDashboard() {
       }
     }
   };
+  
 
   const handleRemoveStudent = async (studentId: string) => {
     try {
