@@ -1,49 +1,19 @@
 "use client";
-import React, { useState, useEffect } from "react";
 import "@/app/globals.css";
-import { useTheme } from "next-themes";
+import React, { useState, useEffect } from 'react';
+import { useTheme } from 'next-themes';
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  LineChart,
-  Line,
-} from "recharts";
-import { format } from "date-fns";
-import { Trash2, UserPlus, Moon, Sun, Download, Upload } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { format } from 'date-fns';
+import { Trash2, UserPlus, Moon, Sun, Download, Upload } from 'lucide-react';
 
 interface Score {
   value: number;
@@ -61,93 +31,69 @@ interface Student {
 export default function TeacherDashboard() {
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>("All");
+  const [activeStudent, setActiveStudent] = useState<string | null>(null);
   const [tempScore, setTempScore] = useState<number>(0);
   const [randomStudents, setRandomStudents] = useState<Student[]>([]);
-  const [isRandomStudentsDialogOpen, setIsRandomStudentsDialogOpen] =
-    useState(false);
+  const [isRandomStudentsDialogOpen, setIsRandomStudentsDialogOpen] = useState(false);
   const [isAddStudentDialogOpen, setIsAddStudentDialogOpen] = useState(false);
-  const [newStudent, setNewStudent] = useState({
-    number: "",
-    name: "",
-    class: "",
-  });
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [newStudent, setNewStudent] = useState({ number: '', name: '', class: '' });
   const { theme, setTheme } = useTheme();
 
   useEffect(() => {
-    const fetchStudents = async () => {
-      try {
-        const response = await fetch('/api/students');
-        const data = await response.json();
-        console.log('Fetched students:', data); // Bu satırı ekleyin
-        setStudents(data);
-      } catch (error) {
-        console.error('Error fetching students:', error);
-      }
-    };
-  
     fetchStudents();
   }, []);
 
   const fetchStudents = async () => {
-    setIsLoading(true);
-    setError(null);
     try {
-      const response = await fetch("/api/students");
-      if (!response.ok) {
-        throw new Error("Failed to fetch students");
-      }
+      const response = await fetch('/api/students');
+      if (!response.ok) throw new Error('Failed to fetch students');
       const data = await response.json();
+      console.log('Fetched students:', data);
       setStudents(data);
-    } catch (err) {
-      console.error("Error fetching students:", err);
-      setError("An error occurred while fetching students");
-    } finally {
-      setIsLoading(false);
+    } catch (error) {
+      console.error('Error fetching students:', error);
     }
   };
+
   const handleExportCSV = async () => {
     try {
-      const response = await fetch("/api/students/export", { method: "GET" });
-      if (!response.ok) throw new Error("CSV export failed");
+      const response = await fetch('/api/students?export=csv', { method: 'GET' });
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
+      const a = document.createElement('a');
       a.href = url;
-      a.download = "students.csv";
+      a.download = 'students.csv';
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error("CSV export error:", error);
-      setError("An error occurred while exporting CSV");
+      console.error('CSV export error:', error);
     }
   };
-  
+
   const handleImportCSV = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-  
+
     const formData = new FormData();
-    formData.append("file", file);
-  
+    formData.append('file', file);
+
     try {
-      const response = await fetch("/api/students/import", {
-        method: "POST",
+      const response = await fetch('/api/students', {
+        method: 'PUT',
         body: formData,
       });
-  
-      if (!response.ok) throw new Error("CSV import failed");
-  
+
+      if (!response.ok) throw new Error('CSV upload failed');
+
       const result = await response.json();
       alert(result.message);
       await fetchStudents();
     } catch (error) {
-      console.error("CSV import error:", error);
-      setError("An error occurred while importing CSV");
+      console.error('CSV upload error:', error);
     }
   };
+
   const handleScoreChange = (newScore: number) => {
     setTempScore(newScore);
   };
@@ -155,33 +101,26 @@ export default function TeacherDashboard() {
   const saveScore = async (studentId: string) => {
     try {
       const response = await fetch(`/api/students/${studentId}/scores`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          value: tempScore,
-          date: new Date().toISOString(),
-        }),
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: tempScore, date: new Date().toISOString() }),
       });
-      if (!response.ok) {
-        throw new Error("Failed to save score");
-      }
+
+      if (!response.ok) throw new Error('Failed to save score');
+
       await fetchStudents();
-      setTempScore(0); // Reset temp score after saving
-    } catch (err) {
-      console.error("Error saving score:", err);
-      setError("An error occurred while saving the score");
+      setActiveStudent(null);
+    } catch (error) {
+      console.error('Error saving score:', error);
     }
   };
 
-  const calculateAvgScore = (scores: any[] | undefined): number => {
+  const calculateAvgScore = (scores: Score[]): number => {
     if (!scores || scores.length === 0) return 0;
-    const validScores = scores.filter(score => score && typeof score.value === 'number');
-    if (validScores.length === 0) return 0;
-    const sum = validScores.reduce((acc, score) => acc + score.value, 0);
-    return Math.round(sum / validScores.length);
+    const sum = scores.reduce((acc, score) => acc + score.value, 0);
+    return Math.round(sum / scores.length);
   };
+
   const getAvailableScoreCount = (scores: Score[]): number => {
     if (scores.length === 0) return 4;
     if (scores.length < 4) return 4;
@@ -192,37 +131,19 @@ export default function TeacherDashboard() {
     return 16;
   };
 
-  const filteredStudents =
-    selectedClass === "All"
-      ? students
-      : students.filter((student) => student.class === selectedClass);
+  const filteredStudents = selectedClass === "All" 
+    ? students 
+    : students.filter(student => student.class === selectedClass);
 
   const classPerformanceData = [
-    {
-      name: "10A",
-      avgScore: calculateAvgScore(
-        students.filter((s) => s.class === "10A").flatMap((s) => s.scores)
-      ),
-    },
-    {
-      name: "10B",
-      avgScore: calculateAvgScore(
-        students.filter((s) => s.class === "10B").flatMap((s) => s.scores)
-      ),
-    },
-    {
-      name: "10C",
-      avgScore: calculateAvgScore(
-        students.filter((s) => s.class === "10C").flatMap((s) => s.scores)
-      ),
-    },
+    { name: '10A', avgScore: calculateAvgScore(students.filter(s => s.class === '10A').flatMap(s => s.scores)) },
+    { name: '10B', avgScore: calculateAvgScore(students.filter(s => s.class === '10B').flatMap(s => s.scores)) },
+    { name: '10C', avgScore: calculateAvgScore(students.filter(s => s.class === '10C').flatMap(s => s.scores)) },
   ];
 
   const selectRandomStudents = () => {
-    const classStudents = students.filter((s) => s.class === selectedClass);
-    const sortedStudents = [...classStudents].sort(
-      (a, b) => a.scores.length - b.scores.length
-    );
+    const classStudents = students.filter(s => s.class === selectedClass);
+    const sortedStudents = [...classStudents].sort((a, b) => a.scores.length - b.scores.length);
     setRandomStudents(sortedStudents.slice(0, 3));
     setIsRandomStudentsDialogOpen(true);
   };
@@ -230,74 +151,45 @@ export default function TeacherDashboard() {
   const handleAddStudent = async () => {
     if (newStudent.number && newStudent.name && newStudent.class) {
       try {
-        const response = await fetch("/api/students", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+        const response = await fetch('/api/students', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(newStudent),
         });
-        if (!response.ok) {
-          throw new Error("Failed to add student");
-        }
+
+        if (!response.ok) throw new Error('Failed to add student');
+
         await fetchStudents();
-        setNewStudent({ number: "", name: "", class: "" });
+        setNewStudent({ number: '', name: '', class: '' });
         setIsAddStudentDialogOpen(false);
-      } catch (err) {
-        console.error("Error adding student:", err);
-        setError("An error occurred while adding the student");
+      } catch (error) {
+        console.error('Error adding student:', error);
       }
     }
   };
 
   const handleRemoveStudent = async (studentId: string) => {
     try {
-      const response = await fetch(`/api/students/${studentId}`, {
-        method: "DELETE",
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          `Failed to remove student: ${response.status} ${response.statusText} - ${errorData.error}`
-        );
-      }
+      const response = await fetch(`/api/students/${studentId}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error('Failed to remove student');
       await fetchStudents();
-      alert("Öğrenci başarıyla silindi.");
-    } catch (err) {
-      console.error("Error removing student:", err);
-      setError("Öğrenci silinirken bir hata oluştu: " + (err as Error).message);
-      alert("Öğrenci silinirken bir hata oluştu. Lütfen tekrar deneyin.");
+    } catch (error) {
+      console.error('Error removing student:', error);
     }
   };
 
   const getPerformanceColor = (score: number) => {
-    if (score >= 90) return "bg-green-500";
-    if (score >= 80) return "bg-green-400";
-    if (score >= 70) return "bg-yellow-400";
-    if (score >= 60) return "bg-orange-400";
-    return "bg-red-500";
+    if (score >= 90) return 'bg-green-500';
+    if (score >= 80) return 'bg-green-400';
+    if (score >= 70) return 'bg-yellow-400';
+    if (score >= 60) return 'bg-orange-400';
+    return 'bg-red-500';
   };
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        Loading...
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex justify-center items-center h-screen text-red-500">
-        {error}
-      </div>
-    );
-  }
 
   return (
     <div className="flex h-screen bg-background text-foreground">
       {/* Sidebar */}
-      <div className="w-64 bg-card p-6">
+      <div className="w-64 bg-card p-6 border-r border-border">
         <h2 className="text-2xl font-bold mb-6">Teacher's Dashboard</h2>
         <div className="text-center mb-6">
           <Avatar className="w-24 h-24 mx-auto mb-4">
@@ -321,7 +213,7 @@ export default function TeacherDashboard() {
       {/* Main content */}
       <div className="flex-1 p-8 overflow-auto">
         <h1 className="text-3xl font-bold mb-6">Welcome, Daniel!</h1>
-
+        
         {/* CSV Import/Export Buttons */}
         <div className="mb-4 flex space-x-2">
           <Button onClick={handleExportCSV} className="flex items-center">
@@ -334,16 +226,14 @@ export default function TeacherDashboard() {
             onChange={handleImportCSV}
             className="max-w-xs"
             id="csv-upload"
-            style={{ display: "none" }}
+            style={{ display: 'none' }}
           />
-          <Button
-            onClick={() => document.getElementById("csv-upload")?.click()}
-            className="flex items-center"
-          >
+          <Button onClick={() => document.getElementById('csv-upload')?.click()} className="flex items-center">
             <Upload className="mr-2 h-4 w-4" />
             CSV Yükle
           </Button>
         </div>
+        
         {/* Charts section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <Card>
@@ -370,24 +260,17 @@ export default function TeacherDashboard() {
             <CardContent>
               <div className="space-y-2">
                 {filteredStudents.map((student) => (
-                  <div
-                    key={student._id}
-                    className="flex items-center space-x-2"
-                  >
+                  <div key={student._id} className="flex items-center space-x-2">
                     <span className="w-24 truncate">{student.name}</span>
                     <div className="flex-1 grid grid-cols-4 gap-1">
                       {student.scores.slice(0, 4).map((score, index) => (
                         <div
                           key={index}
-                          className={`h-6 ${getPerformanceColor(
-                            score.value
-                          )} rounded`}
+                          className={`h-6 ${getPerformanceColor(score.value)} rounded`}
                           title={`Score ${index + 1}: ${score.value}`}
                         />
                       ))}
-                      {Array.from({
-                        length: Math.max(0, 4 - student.scores.length),
-                      }).map((_, index) => (
+                      {Array(4 - student.scores.length).fill(0).map((_, index) => (
                         <div
                           key={`empty-${index}`}
                           className="h-6 bg-muted rounded"
@@ -413,11 +296,7 @@ export default function TeacherDashboard() {
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Student List</CardTitle>
             <div className="flex items-center space-x-2">
-              <Button
-                onClick={selectRandomStudents}
-                size="sm"
-                variant="outline"
-              >
+              <Button onClick={selectRandomStudents} size="sm" variant="outline">
                 Select Random Students
               </Button>
               <Select value={selectedClass} onValueChange={setSelectedClass}>
@@ -431,11 +310,7 @@ export default function TeacherDashboard() {
                   <SelectItem value="10C">10C</SelectItem>
                 </SelectContent>
               </Select>
-              <Button
-                onClick={() => setIsAddStudentDialogOpen(true)}
-                size="sm"
-                variant="outline"
-              >
+              <Button onClick={() => setIsAddStudentDialogOpen(true)} size="sm" variant="outline">
                 <UserPlus className="mr-2 h-4 w-4" />
                 Add Student
               </Button>
@@ -461,9 +336,7 @@ export default function TeacherDashboard() {
                     <TableCell>{calculateAvgScore(student.scores)}</TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
-                        {Array.from({
-                          length: getAvailableScoreCount(student.scores),
-                        }).map((_, index) => (
+                        {Array.from({ length: getAvailableScoreCount(student.scores) }).map((_, index) => (
                           <Dialog key={index}>
                             <DialogTrigger asChild>
                               <Button
@@ -471,14 +344,12 @@ export default function TeacherDashboard() {
                                 size="sm"
                                 className="w-8 h-8 p-0"
                               >
-                                {student.scores[index]?.value ?? "-"}
+                                {student.scores[index]?.value ?? '-'}
                               </Button>
                             </DialogTrigger>
                             <DialogContent>
                               <DialogHeader>
-                                <DialogTitle>
-                                  {student.name}'s Score Details
-                                </DialogTitle>
+                                <DialogTitle>{student.name}'s Score Details</DialogTitle>
                               </DialogHeader>
                               <div className="py-4">
                                 <ResponsiveContainer width="100%" height={300}>
@@ -486,29 +357,15 @@ export default function TeacherDashboard() {
                                     <CartesianGrid strokeDasharray="3 3" />
                                     <XAxis
                                       dataKey="date"
-                                      tickFormatter={(isoString) =>
-                                        format(new Date(isoString), "dd/MM/yy")
-                                      }
+                                      tickFormatter={(isoString) => format(new Date(isoString), "dd/MM/yy")}
                                     />
                                     <YAxis domain={[0, 100]} />
                                     <Tooltip
-                                      labelFormatter={(isoString) =>
-                                        format(
-                                          new Date(isoString),
-                                          "dd/MM/yyyy"
-                                        )
-                                      }
-                                      formatter={(value) => [
-                                        `${value}`,
-                                        "Score",
-                                      ]}
+                                      labelFormatter={(isoString) => format(new Date(isoString), "dd/MM/yyyy")}
+                                      formatter={(value) => [`${value}`, "Score"]}
                                     />
                                     <Legend />
-                                    <Line
-                                      type="monotone"
-                                      dataKey="value"
-                                      stroke="#8884d8"
-                                    />
+                                    <Line type="monotone" dataKey="value" stroke="#8884d8" />
                                   </LineChart>
                                 </ResponsiveContainer>
                               </div>
@@ -516,9 +373,7 @@ export default function TeacherDashboard() {
                                 <div className="mt-2 flex items-center space-x-2">
                                   <Slider
                                     value={[tempScore]}
-                                    onValueChange={([value]) =>
-                                      handleScoreChange(value)
-                                    }
+                                    onValueChange={([value]) => handleScoreChange(value)}
                                     max={100}
                                     step={1}
                                     className="w-full"
@@ -553,10 +408,7 @@ export default function TeacherDashboard() {
       </div>
 
       {/* Random Students Dialog */}
-      <Dialog
-        open={isRandomStudentsDialogOpen}
-        onOpenChange={setIsRandomStudentsDialogOpen}
-      >
+      <Dialog open={isRandomStudentsDialogOpen} onOpenChange={setIsRandomStudentsDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Randomly Selected Students</DialogTitle>
@@ -574,10 +426,7 @@ export default function TeacherDashboard() {
       </Dialog>
 
       {/* Add Student Dialog */}
-      <Dialog
-        open={isAddStudentDialogOpen}
-        onOpenChange={setIsAddStudentDialogOpen}
-      >
+      <Dialog open={isAddStudentDialogOpen} onOpenChange={setIsAddStudentDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add New Student</DialogTitle>
@@ -589,9 +438,7 @@ export default function TeacherDashboard() {
                 <Input
                   id="student-number"
                   value={newStudent.number}
-                  onChange={(e) =>
-                    setNewStudent({ ...newStudent, number: e.target.value })
-                  }
+                  onChange={(e) => setNewStudent({ ...newStudent, number: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
@@ -599,18 +446,14 @@ export default function TeacherDashboard() {
                 <Input
                   id="student-name"
                   value={newStudent.name}
-                  onChange={(e) =>
-                    setNewStudent({ ...newStudent, name: e.target.value })
-                  }
+                  onChange={(e) => setNewStudent({ ...newStudent, name: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="student-class">Class</Label>
                 <Select
                   value={newStudent.class}
-                  onValueChange={(value) =>
-                    setNewStudent({ ...newStudent, class: value })
-                  }
+                  onValueChange={(value) => setNewStudent({ ...newStudent, class: value })}
                 >
                   <SelectTrigger id="student-class">
                     <SelectValue placeholder="Select Class" />
