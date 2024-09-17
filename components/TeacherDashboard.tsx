@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import "@/app/globals.css";
 import { useTheme } from "next-themes";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -98,6 +99,7 @@ export default function TeacherDashboard() {
   const handleExportCSV = async () => {
     try {
       const response = await fetch("/api/students/export", { method: "GET" });
+      if (!response.ok) throw new Error("CSV export failed");
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -107,34 +109,32 @@ export default function TeacherDashboard() {
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error("CSV dışa aktarma hatası:", error);
-      setError("CSV dışa aktarma sırasında bir hata oluştu");
+      console.error("CSV export error:", error);
+      setError("An error occurred while exporting CSV");
     }
   };
-
-  const handleImportCSV = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  
+  const handleImportCSV = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
+  
     const formData = new FormData();
     formData.append("file", file);
-
+  
     try {
       const response = await fetch("/api/students/import", {
         method: "POST",
         body: formData,
       });
-
-      if (!response.ok) throw new Error("CSV yükleme başarısız");
-
+  
+      if (!response.ok) throw new Error("CSV import failed");
+  
       const result = await response.json();
       alert(result.message);
       await fetchStudents();
     } catch (error) {
-      console.error("CSV yükleme hatası:", error);
-      setError("CSV yükleme sırasında bir hata oluştu");
+      console.error("CSV import error:", error);
+      setError("An error occurred while importing CSV");
     }
   };
   const handleScoreChange = (newScore: number) => {
@@ -157,6 +157,7 @@ export default function TeacherDashboard() {
         throw new Error("Failed to save score");
       }
       await fetchStudents();
+      setTempScore(0); // Reset temp score after saving
     } catch (err) {
       console.error("Error saving score:", err);
       setError("An error occurred while saving the score");
