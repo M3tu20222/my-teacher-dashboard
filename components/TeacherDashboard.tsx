@@ -76,6 +76,17 @@ export default function TeacherDashboard() {
   const { theme, setTheme } = useTheme();
 
   useEffect(() => {
+    const fetchStudents = async () => {
+      try {
+        const response = await fetch('/api/students');
+        const data = await response.json();
+        console.log('Fetched students:', data); // Bu satırı ekleyin
+        setStudents(data);
+      } catch (error) {
+        console.error('Error fetching students:', error);
+      }
+    };
+  
     fetchStudents();
   }, []);
 
@@ -164,11 +175,13 @@ export default function TeacherDashboard() {
     }
   };
 
-  const calculateAvgScore = (scores: Score[]): number => {
-    const sum = scores.reduce((acc, score) => acc + score.value, 0);
-    return scores.length > 0 ? Math.round(sum / scores.length) : 0;
+  const calculateAvgScore = (scores: any[] | undefined): number => {
+    if (!scores || scores.length === 0) return 0;
+    const validScores = scores.filter(score => score && typeof score.value === 'number');
+    if (validScores.length === 0) return 0;
+    const sum = validScores.reduce((acc, score) => acc + score.value, 0);
+    return Math.round(sum / validScores.length);
   };
-
   const getAvailableScoreCount = (scores: Score[]): number => {
     if (scores.length === 0) return 4;
     if (scores.length < 4) return 4;
