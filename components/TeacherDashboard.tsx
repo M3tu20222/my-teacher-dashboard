@@ -8,12 +8,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { format } from 'date-fns';
-import { Trash2, UserPlus, Moon, Sun, Download, Upload } from 'lucide-react';
+import { Trash2, UserPlus, Moon, Sun, Download, Upload, Edit } from 'lucide-react';
 
 interface Score {
   value: number;
@@ -28,8 +28,18 @@ interface Student {
   scores: Score[];
 }
 
+interface User {
+  id: string;
+  name: string;
+  role: string;
+  subject: string;
+}
 
-export default function TeacherDashboard() {
+export default function TeacherDashboard({ user }: { user: User }) {
+  if (!user) {
+    return <div>Loading...</div>;
+  }
+
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>("All");
   const [activeStudent, setActiveStudent] = useState<string | null>(null);
@@ -37,7 +47,9 @@ export default function TeacherDashboard() {
   const [randomStudents, setRandomStudents] = useState<Student[]>([]);
   const [isRandomStudentsDialogOpen, setIsRandomStudentsDialogOpen] = useState(false);
   const [isAddStudentDialogOpen, setIsAddStudentDialogOpen] = useState(false);
+  const [isEditStudentDialogOpen, setIsEditStudentDialogOpen] = useState(false);
   const [newStudent, setNewStudent] = useState({ number: '', name: '', class: '' });
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const { theme, setTheme } = useTheme();
 
   useEffect(() => {
@@ -50,14 +62,7 @@ export default function TeacherDashboard() {
       if (!response.ok) throw new Error('Failed to fetch students');
       const data = await response.json();
       console.log('Fetched students:', data);
-  
-      // Her öğrenci için scores alanını kontrol ediyoruz
-      const processedData = data.map((student: Student) => ({
-        ...student,
-        scores: student.scores || [],
-      }));
-  
-      setStudents(processedData);
+      setStudents(data);
     } catch (error) {
       console.error('Error fetching students:', error);
     }
@@ -160,8 +165,24 @@ export default function TeacherDashboard() {
 
   const selectRandomStudents = () => {
     const classStudents = students.filter(s => s.class === selectedClass);
-    const sortedStudents = [...classStudents].sort((a, b) => a.scores.length - b.scores.length);
-    setRandomStudents(sortedStudents.slice(0, 3));
+    
+    // Not almamış öğrencileri filtrele
+    const studentsWithoutScores = classStudents.filter(s => s.scores.length === 0);
+    
+    // Eğer not almamış öğrenci yoksa, tüm öğrenciler arasından seç
+    const poolOfStudents = studentsWithoutScores.length > 0 ? studentsWithoutScores : classStudents;
+    
+    // Rastgele seçim yap
+    const randomlySelectedStudents = [];
+    const numberOfStudentsToSelect = Math.min(3, poolOfStudents.length);
+    
+    for (let i = 0; i < numberOfStudentsToSelect; i++) {
+      const randomIndex = Math.floor(Math.random() * poolOfStudents.length);
+      randomlySelectedStudents.push(poolOfStudents[randomIndex]);
+      poolOfStudents.splice(randomIndex, 1); // Seçilen öğrenciyi havuzdan çıkar
+    }
+    
+    setRandomStudents(randomlySelectedStudents);
     setIsRandomStudentsDialogOpen(true);
   };
 
@@ -185,6 +206,37 @@ export default function TeacherDashboard() {
     }
   };
   
+  const handleEditStudent = (student: Student) => {
+    setEditingStudent(student);
+    setIsEditStudentDialogOpen(true);
+  };
+  const handleUpdateStudent = async () => {
+    if (editingStudent) {
+      try {
+        const response = await fetch(`/api/students/${editingStudent._id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: editingStudent.name,
+            number: editingStudent.number,
+            class: editingStudent.class
+          }),
+        });
+  
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to update student');
+        }
+  
+        await fetchStudents();
+        setIsEditStudentDialogOpen(false);
+        setEditingStudent(null);
+      } catch (error) {
+        console.error('Error updating student:', error);
+        alert('Failed to update student. Please try again.');
+      }
+    }
+  };
 
   const handleRemoveStudent = async (studentId: string) => {
     try {
@@ -208,13 +260,13 @@ export default function TeacherDashboard() {
     <div className="flex h-screen bg-background text-foreground">
       {/* Sidebar */}
       <div className="w-64 bg-card p-6 border-r border-border">
-        <h2 className="text-2xl font-bold mb-6">Teacher's Dashboard</h2>
+        <h2 className="text-2xl font-bold mb-6">Öğretmen Dashboard</h2>
         <div className="text-center mb-6">
           <Avatar className="w-24 h-24 mx-auto mb-4">
-            <AvatarFallback>DW</AvatarFallback>
+            <AvatarFallback>{user.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
           </Avatar>
-          <h3 className="text-xl font-semibold">Daniel Wilson</h3>
-          <p className="text-sm text-muted-foreground">Math Teacher</p>
+          <h3 className="text-xl font-semibold">{user.name}</h3>
+          <p className="text-sm text-muted-foreground">{user.subject} Öğretmen</p>
         </div>
         <Button
           variant="outline"
@@ -224,13 +276,13 @@ export default function TeacherDashboard() {
         >
           <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
           <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-          <span className="sr-only">Toggle theme</span>
+          <span className="sr-only">Temayı Değiştir</span>
         </Button>
       </div>
 
       {/* Main content */}
       <div className="flex-1 p-8 overflow-auto">
-        <h1 className="text-3xl font-bold mb-6">Welcome, Daniel!</h1>
+        <h1 className="text-3xl font-bold mb-6">Hoşgeldiniz, {user.name}!</h1>
         
         {/* CSV Import/Export Buttons */}
         <div className="mb-4 flex space-x-2">
@@ -256,7 +308,7 @@ export default function TeacherDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <Card>
             <CardHeader>
-              <CardTitle>Class Performance</CardTitle>
+              <CardTitle>Sınıf Performansı</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
@@ -273,7 +325,7 @@ export default function TeacherDashboard() {
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle>Student Performance Heatmap</CardTitle>
+              <CardTitle>Öğrenci Performans Isı Haritası</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
@@ -300,10 +352,10 @@ export default function TeacherDashboard() {
                 ))}
               </div>
               <div className="mt-4 flex justify-between text-xs text-muted-foreground">
-                <span>Score 1</span>
-                <span>Score 2</span>
-                <span>Score 3</span>
-                <span>Score 4</span>
+                <span>Not 1</span>
+                <span>Not 2</span>
+                <span>Not 3</span>
+                <span>Not 4</span>
               </div>
             </CardContent>
           </Card>
@@ -312,25 +364,25 @@ export default function TeacherDashboard() {
         {/* Student List */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Student List</CardTitle>
+            <CardTitle>Öğrenci Listesi</CardTitle>
             <div className="flex items-center space-x-2">
               <Button onClick={selectRandomStudents} size="sm" variant="outline">
-                Select Random Students
+                Rastgele Öğrenci Seç
               </Button>
               <Select value={selectedClass} onValueChange={setSelectedClass}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Select Class" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="All">All Classes</SelectItem>
-                  <SelectItem value="10A">10A</SelectItem>
-                  <SelectItem value="10B">10B</SelectItem>
-                  <SelectItem value="10C">10C</SelectItem>
+                  <SelectItem value="All">Tüm Sınıflar</SelectItem>
+                  <SelectItem value="10A">8A</SelectItem>
+                  <SelectItem value="10B">6A</SelectItem>
+                  <SelectItem value="10C">6C</SelectItem>
                 </SelectContent>
               </Select>
               <Button onClick={() => setIsAddStudentDialogOpen(true)} size="sm" variant="outline">
                 <UserPlus className="mr-2 h-4 w-4" />
-                Add Student
+                Öğrenci Ekle
               </Button>
             </div>
           </CardHeader>
@@ -338,10 +390,10 @@ export default function TeacherDashboard() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Number</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Class</TableHead>
-                  <TableHead>Avg Score</TableHead>
+                  <TableHead>Numara</TableHead>
+                  <TableHead>İsim</TableHead>
+                  <TableHead>Sınıf</TableHead>
+                  <TableHead>Ort Not</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -367,7 +419,7 @@ export default function TeacherDashboard() {
                             </DialogTrigger>
                             <DialogContent>
                               <DialogHeader>
-                                <DialogTitle>{student.name}'s Score Details</DialogTitle>
+                                <DialogTitle>{student.name}'nın Not Detayları</DialogTitle>
                               </DialogHeader>
                               <div className="py-4">
                                 <ResponsiveContainer width="100%" height={300}>
@@ -409,6 +461,13 @@ export default function TeacherDashboard() {
                           </Dialog>
                         ))}
                         <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditStudent(student)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
                           variant="destructive"
                           size="sm"
                           onClick={() => handleRemoveStudent(student._id)}
@@ -429,13 +488,13 @@ export default function TeacherDashboard() {
       <Dialog open={isRandomStudentsDialogOpen} onOpenChange={setIsRandomStudentsDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Randomly Selected Students</DialogTitle>
+            <DialogTitle>Rastgele Seçilen Öğrenciler</DialogTitle>
           </DialogHeader>
           <div className="py-4">
             <ul>
               {randomStudents.map((student) => (
                 <li key={student._id} className="mb-2">
-                  {student.name} - Scores: {student.scores.length}
+                  {student.name} - Notları: {student.scores.length}
                 </li>
               ))}
             </ul>
@@ -447,12 +506,12 @@ export default function TeacherDashboard() {
       <Dialog open={isAddStudentDialogOpen} onOpenChange={setIsAddStudentDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add New Student</DialogTitle>
+            <DialogTitle>Yeni Öğrenci Ekle</DialogTitle>
           </DialogHeader>
           <div className="py-4">
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="student-number">Student Number</Label>
+                <Label htmlFor="student-number">Öğrenci Numarası</Label>
                 <Input
                   id="student-number"
                   value={newStudent.number}
@@ -460,7 +519,7 @@ export default function TeacherDashboard() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="student-name">Student Name</Label>
+                <Label htmlFor="student-name">Öğrenci İsim</Label>
                 <Input
                   id="student-name"
                   value={newStudent.name}
@@ -468,7 +527,7 @@ export default function TeacherDashboard() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="student-class">Class</Label>
+                <Label htmlFor="student-class">Sınıf</Label>
                 <Select
                   value={newStudent.class}
                   onValueChange={(value) => setNewStudent({ ...newStudent, class: value })}
@@ -477,15 +536,63 @@ export default function TeacherDashboard() {
                     <SelectValue placeholder="Select Class" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="10A">10A</SelectItem>
-                    <SelectItem value="10B">10B</SelectItem>
-                    <SelectItem value="10C">10C</SelectItem>
+                    <SelectItem value="10A">8A</SelectItem>
+                    <SelectItem value="10B">6A</SelectItem>
+                    <SelectItem value="10C">6C</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
           </div>
-          <Button onClick={handleAddStudent}>Add Student</Button>
+          <Button onClick={handleAddStudent}>Öğrenci Ekle</Button>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Student Dialog */}
+      <Dialog open={isEditStudentDialogOpen} onOpenChange={setIsEditStudentDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Öğrenci Düzenle</DialogTitle>
+          </DialogHeader>
+          {editingStudent && (
+            <div className="py-4">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-student-number">Öğrenci Numarası</Label>
+                  <Input
+                    id="edit-student-number"
+                    value={editingStudent.number}
+                    onChange={(e) => setEditingStudent({ ...editingStudent, number: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-student-name">Öğrenci İsim</Label>
+                  <Input
+                    id="edit-student-name"
+                    value={editingStudent.name}
+                    onChange={(e) => setEditingStudent({ ...editingStudent, name: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-student-class">Sınıf</Label>
+                  <Select
+                    value={editingStudent.class}
+                    onValueChange={(value) => setEditingStudent({ ...editingStudent, class: value })}
+                  >
+                    <SelectTrigger id="edit-student-class">
+                      <SelectValue placeholder="Select Class" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10A">8A</SelectItem>
+                      <SelectItem value="10B">6A</SelectItem>
+                      <SelectItem value="10C">6C</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          )}
+          <Button onClick={handleUpdateStudent}>Öğrenci Düzenle</Button>
         </DialogContent>
       </Dialog>
     </div>

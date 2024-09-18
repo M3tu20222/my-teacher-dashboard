@@ -1,8 +1,8 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Inter } from 'next/font/google'
 import type { Metadata } from 'next'
 import { Providers } from './providers'
-
+import ClientWrapper from './ClientWrapper'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
@@ -18,7 +18,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <Providers>{children}</Providers>
+        <Providers>
+          <ClientWrapper>{children}</ClientWrapper>
+        </Providers>
       </body>
     </html>
   )
