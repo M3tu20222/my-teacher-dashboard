@@ -100,7 +100,7 @@ export default function TeacherDashboard({ user }: { user: User }) {
         body: formData,
       });
 
-      if (!response.ok) throw new Error('CSV upload failed');
+      if (!response.ok) throw new Error('CSV upload failed ');
 
       const result = await response.json();
       alert(result.message);
