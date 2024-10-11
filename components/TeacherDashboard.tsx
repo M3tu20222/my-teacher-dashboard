@@ -348,13 +348,14 @@ export default function TeacherDashboard({ user }: { user: User }) {
                           title={`Score ${index + 1}: ${score.value}`}
                         />
                       ))}
-                      {Array(4 - student.scores.length).fill(0).map((_, index) => (
+                      {Array(Math.max(4 - student.scores.length, 0)).fill(0).map((_, index) => (
                         <div
                           key={`empty-${index}`}
                           className="h-6 bg-muted rounded"
                           title="No score yet"
                         />
                       ))}
+
                     </div>
                   </div>
                 ))}
